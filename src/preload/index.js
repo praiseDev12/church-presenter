@@ -1,42 +1,30 @@
 // src/preload/index.js
-import { contextBridge, ipcRenderer } from 'electron'
+const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electron', {
-  // ── Functions the CONTROL WINDOW calls ──────────────────────
+  // ── Phase 1 ──────────────────────────────────────────────
+  sendToDisplay: (payload) => ipcRenderer.send('send-to-display', payload),
+  setBlank: (isBlank) => ipcRenderer.send('set-blank', isBlank),
+  onReceiveContent: (cb) => ipcRenderer.on('receive-content', (_, p) => cb(p)),
+  onSetBlank: (cb) => ipcRenderer.on('set-blank', (_, v) => cb(v)),
+  removeListener: (channel) => ipcRenderer.removeAllListeners(channel),
 
-  // Send content to the projector
-  sendToDisplay: (payload) => {
-    ipcRenderer.send('send-to-display', payload)
-  },
+  // ── Phase 2 ──────────────────────────────────────────────
+  searchVerses: (query, translation) => ipcRenderer.invoke('search-verses', query, translation),
+  getVerse: (book, chapter, verse, translation) =>
+    ipcRenderer.invoke('get-verse', book, chapter, verse, translation),
+  getTranslations: () => ipcRenderer.invoke('get-translations'),
 
-  // Blank or unblank the projector screen
-  setBlank: (isBlank) => {
-    ipcRenderer.send('set-blank', isBlank)
-  },
+  // ── Phase 3 ──────────────────────────────────────────────
+  getThemes: () => ipcRenderer.invoke('get-themes'),
+  getActiveTheme: () => ipcRenderer.invoke('get-active-theme'),
+  setTheme: (themeName) => ipcRenderer.send('set-theme', themeName),
+  saveCustomTheme: (theme) => ipcRenderer.send('save-custom-theme', theme),
+  getDisplays: () => ipcRenderer.invoke('get-displays'),
+  moveToDisplay: (displayId) => ipcRenderer.send('move-to-display', displayId),
 
-  // ── Functions the DISPLAY WINDOW listens to ─────────────────
-
-  // Called when new content arrives from the control window
-  onReceiveContent: (callback) => {
-    ipcRenderer.on('receive-content', (event, payload) => callback(payload))
-  },
-
-  // Called when the screen blank state changes
-  onSetBlank: (callback) => {
-    ipcRenderer.on('set-blank', (event, isBlank) => callback(isBlank))
-  },
-
-  // ── Utility ─────────────────────────────────────────────────
-
-  // Clean up listeners when a React component unmounts
-  // (important to prevent memory leaks)
-  removeListener: (channel) => {
-    ipcRenderer.removeAllListeners(channel)
-  },
-
-  // invoke returns a Promise with the result — like an async function call
-  searchVerses: (query) => ipcRenderer.invoke('search-verses', query),
-  getVerse: (book, chapter, verse) => ipcRenderer.invoke('get-verse', book, chapter, verse),
-
-  debugDb: () => ipcRenderer.invoke('debug-db')
+  // Listeners for display window
+  onApplyTheme: (cb) => ipcRenderer.on('apply-theme', (_, theme) => cb(theme)),
+  onThemeChanged: (cb) => ipcRenderer.on('theme-changed', (_, theme) => cb(theme)),
+  onPreviewUpdate: (cb) => ipcRenderer.on('preview-update', (_, data) => cb(data))
 })

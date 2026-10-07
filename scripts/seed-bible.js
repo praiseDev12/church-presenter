@@ -1,5 +1,6 @@
+// scripts/seed-bible.js
 import initSqlJs from 'sql.js'
-import { readFileSync, writeFileSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
@@ -20,33 +21,52 @@ db.run(`
     translation TEXT NOT NULL DEFAULT 'KJV'
   );
   CREATE INDEX IF NOT EXISTS idx_reference ON verses(book, chapter, verse);
+  CREATE INDEX IF NOT EXISTS idx_translation ON verses(translation);
 `)
-
-const raw = readFileSync(path.join(__dirname, '../resources/kjv.json'), 'utf-8')
-const bible = JSON.parse(raw)
 
 const stmt = db.prepare(`
   INSERT INTO verses (book, chapter, verse, text, translation)
   VALUES (?, ?, ?, ?, ?)
 `)
 
-let count = 0
+// Define all translations to seed
+// Add more here as you get more JSON files
+const translations = [
+  { file: 'kjv.json', code: 'KJV' },
+  { file: 'asv.json', code: 'ASV' },
+  { file: 'web.json', code: 'WEB' }
+]
 
-for (const bookObj of bible.books) {
-  const bookName = bookObj.englishName // "Genesis", "Exodus", etc.
+let totalCount = 0
 
-  for (const chapterObj of bookObj.chapters) {
-    for (const verseObj of chapterObj.verses) {
-      stmt.run([
-        bookName,
-        chapterObj.chapter, // already a number
-        verseObj.number, // already a number
-        verseObj.text,
-        'KJV'
-      ])
-      count++
+for (const translation of translations) {
+  const filePath = path.join(__dirname, '../resources', translation.file)
+
+  // Skip if file doesn't exist
+  if (!existsSync(filePath)) {
+    console.log(`Skipping ${translation.file} — file not found`)
+    continue
+  }
+
+  console.log(`Seeding ${translation.code}...`)
+
+  const raw = readFileSync(filePath, 'utf-8')
+  const bible = JSON.parse(raw)
+  let count = 0
+
+  for (const bookObj of bible.books) {
+    const bookName = bookObj.englishName
+
+    for (const chapterObj of bookObj.chapters) {
+      for (const verseObj of chapterObj.verses) {
+        stmt.run([bookName, chapterObj.chapter, verseObj.number, verseObj.text, translation.code])
+        count++
+      }
     }
   }
+
+  console.log(`  → ${count} verses inserted`)
+  totalCount += count
 }
 
 stmt.free()
@@ -54,6 +74,6 @@ stmt.free()
 const data = db.export()
 writeFileSync(path.join(__dirname, '../resources/bible.db'), Buffer.from(data))
 
-console.log(`Done. Inserted ${count} verses.`)
+console.log(`\nDone. Total verses inserted: ${totalCount}`)
 console.log('Database saved to resources/bible.db')
 db.close()

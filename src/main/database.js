@@ -22,24 +22,36 @@ export async function openDatabase() {
   return db
 }
 
-export async function searchVerses(query) {
+// Get all available translations in the database
+export async function getTranslations() {
+  const database = await openDatabase()
+  const stmt = database.prepare(`
+    SELECT DISTINCT translation FROM verses ORDER BY translation
+  `)
+  const results = []
+  while (stmt.step()) {
+    results.push(stmt.getAsObject().translation)
+  }
+  stmt.free()
+  return results
+}
+
+export async function searchVerses(query, translation = 'KJV') {
   if (!query || query.trim().length < 2) return []
 
   const database = await openDatabase()
   const trimmed = query.trim()
 
-  // Decide if this looks like a reference (John 3:16) or keyword (fear not)
   const looksLikeReference = /^(\d?\s?[a-zA-Z]+)\s+\d/i.test(trimmed)
 
   if (looksLikeReference) {
-    return searchByReference(database, trimmed)
+    return searchByReference(database, trimmed, translation)
   } else {
-    return searchByKeyword(database, trimmed)
+    return searchByKeyword(database, trimmed, translation)
   }
 }
 
-function searchByReference(database, query) {
-  // Match patterns like "John 3:16", "John 3 16", "1 John 3:16", "Psalms 23"
+function searchByReference(database, query, translation) {
   const parts = query.match(/^(\d?\s?[a-zA-Z\s]+?)\s+(\d+)(?::(\d+))?$/)
   if (!parts) return []
 
@@ -48,25 +60,22 @@ function searchByReference(database, query) {
   const verse = parts[3] ? parseInt(parts[3]) : null
 
   let stmt
-  let results = []
+  const results = []
 
   if (verse) {
-    // Exact verse — John 3:16
     stmt = database.prepare(`
       SELECT * FROM verses
-      WHERE book LIKE ? AND chapter = ? AND verse = ?
+      WHERE book LIKE ? AND chapter = ? AND verse = ? AND translation = ?
       LIMIT 1
     `)
-    stmt.bind([`${book}%`, chapter, verse])
+    stmt.bind([`${book}%`, chapter, verse, translation])
   } else {
-    // Whole chapter — John 3
     stmt = database.prepare(`
       SELECT * FROM verses
-      WHERE book LIKE ? AND chapter = ?
-      ORDER BY verse
-      LIMIT 50
+      WHERE book LIKE ? AND chapter = ? AND translation = ?
+      ORDER BY verse LIMIT 50
     `)
-    stmt.bind([`${book}%`, chapter])
+    stmt.bind([`${book}%`, chapter, translation])
   }
 
   while (stmt.step()) {
@@ -76,14 +85,14 @@ function searchByReference(database, query) {
   return results
 }
 
-function searchByKeyword(database, query) {
+function searchByKeyword(database, query, translation) {
   const stmt = database.prepare(`
     SELECT * FROM verses
-    WHERE text LIKE ?
+    WHERE text LIKE ? AND translation = ?
     ORDER BY book, chapter, verse
     LIMIT 20
   `)
-  stmt.bind([`%${query}%`])
+  stmt.bind([`%${query}%`, translation])
 
   const results = []
   while (stmt.step()) {
@@ -93,15 +102,15 @@ function searchByKeyword(database, query) {
   return results
 }
 
-export async function getVerse(book, chapter, verse) {
+export async function getVerse(book, chapter, verse, translation = 'KJV') {
   const database = await openDatabase()
 
   const stmt = database.prepare(`
     SELECT * FROM verses
-    WHERE book = ? AND chapter = ? AND verse = ?
+    WHERE book = ? AND chapter = ? AND verse = ? AND translation = ?
     LIMIT 1
   `)
-  stmt.bind([book, chapter, verse])
+  stmt.bind([book, chapter, verse, translation])
 
   const result = stmt.step() ? stmt.getAsObject() : null
   stmt.free()

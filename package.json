@@ -22,6 +22,8 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@google/generative-ai": "^0.24.1",
+    "electron-store": "^11.0.2",
     "electron-updater": "^6.3.9",
     "react-router-dom": "^7.15.1",
     "sql.js": "^1.14.1"
@@ -29,6 +31,7 @@
   "devDependencies": {
     "@electron-toolkit/eslint-config": "^2.1.0",
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^5.1.1",
     "better-sqlite3": "^13.0.2",
     "electron": "^39.2.6",
@@ -41,6 +44,7 @@
     "prettier": "^3.7.4",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "tailwindcss": "^4.3.3",
     "vite": "^7.2.6"
   }
 }
