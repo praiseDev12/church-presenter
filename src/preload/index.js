@@ -26,5 +26,19 @@ contextBridge.exposeInMainWorld('electron', {
   // Listeners for display window
   onApplyTheme: (cb) => ipcRenderer.on('apply-theme', (_, theme) => cb(theme)),
   onThemeChanged: (cb) => ipcRenderer.on('theme-changed', (_, theme) => cb(theme)),
-  onPreviewUpdate: (cb) => ipcRenderer.on('preview-update', (_, data) => cb(data))
+  onPreviewUpdate: (cb) => ipcRenderer.on('preview-update', (_, data) => cb(data)),
+
+  // Add to contextBridge.exposeInMainWorld alongside existing functions
+
+  // ── Phase 4 ──────────────────────────────────────────────────
+  startTranscription: () => ipcRenderer.send('start-transcription'),
+  stopTranscription: () => ipcRenderer.send('stop-transcription'),
+  sendAudioChunk: (buffer) => ipcRenderer.send('audio-chunk', buffer),
+  setDetectionMode: (mode) => ipcRenderer.send('set-detection-mode', mode),
+  displayDetectedVerse: (ref) => ipcRenderer.send('display-detected-verse', ref),
+
+  // Listeners
+  onTranscriptUpdate: (cb) => ipcRenderer.on('transcript-update', (_, text) => cb(text)),
+  onScriptureDetected: (cb) => ipcRenderer.on('scripture-detected', (_, ref) => cb(ref)),
+  onTranscriptionError: (cb) => ipcRenderer.on('transcription-error', (_, msg) => cb(msg))
 })

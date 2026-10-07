@@ -20,9 +20,11 @@
     "build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
+    "@deepgram/sdk": "^5.14.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@google/generative-ai": "^0.24.1",
+    "dotenv": "^18.0.6",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.3.9",
     "react-router-dom": "^7.15.1",

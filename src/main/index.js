@@ -1,9 +1,11 @@
-// src/main/index.js
+import 'dotenv/config'
 import { app, BrowserWindow, screen, ipcMain } from 'electron'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
 import { searchVerses, getVerse, openDatabase, getTranslations } from './database.js'
 import { getActiveTheme, setActiveTheme, saveCustomTheme, getAllThemes } from './themeStore.js'
+import { startTranscription, sendAudioChunk, stopTranscription } from './transcription.js'
+import { detectScripture, resetDetector } from './scriptureDetector.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = join(__filename, '..')
@@ -177,4 +179,59 @@ app.whenReady().then(createWindows)
 app.on('window-all-closed', () => {
   if (previewInterval) clearInterval(previewInterval)
   if (process.platform !== 'darwin') app.quit()
+})
+
+// ── Phase 4 IPC handlers ─────────────────────────────────────
+
+let detectionMode = 'standard'
+
+ipcMain.on('start-transcription', async () => {
+  resetDetector()
+
+  await startTranscription(
+    async (newText, fullBuffer) => {
+      controlWindow.webContents.send('transcript-update', newText)
+
+      const ref = await detectScripture(fullBuffer, detectionMode)
+      if (ref) {
+        console.log('Scripture detected, sending to control window:', ref) // ← add this
+        controlWindow.webContents.send('scripture-detected', ref)
+      }
+    },
+    (errMsg) => {
+      controlWindow.webContents.send('transcription-error', errMsg)
+    }
+  )
+})
+
+ipcMain.on('stop-transcription', () => {
+  stopTranscription()
+  resetDetector()
+})
+
+ipcMain.on('audio-chunk', (event, audioBuffer) => {
+  sendAudioChunk(audioBuffer)
+})
+
+ipcMain.on('set-detection-mode', (event, mode) => {
+  detectionMode = mode
+})
+
+ipcMain.on('display-detected-verse', async (event, ref) => {
+  console.log('Operator approved verse:', ref) // ← add this
+  // Operator approved the detected verse — look it up and display it
+  const verse = await getVerse(ref.book, ref.chapter, ref.verse, ref.translation || 'KJV')
+  console.log('Verse lookup result:', verse) // ← add this
+  if (verse && displayWindow) {
+    const payload = {
+      type: 'verse',
+      book: verse.book,
+      chapter: verse.chapter,
+      verse: verse.verse,
+      text: verse.text,
+      translation: verse.translation,
+      reference: `${verse.book} ${verse.chapter}:${verse.verse}`
+    }
+    displayWindow.webContents.send('receive-content', payload)
+  }
 })

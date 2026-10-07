@@ -1,5 +1,6 @@
 // src/renderer/src/App.jsx
 import { useState, useCallback, useRef, useEffect } from 'react'
+import SermonListener from './components/SermonListener'
 
 export default function App() {
   const [query, setQuery] = useState('')
@@ -127,6 +128,8 @@ export default function App() {
             </span>
           </div>
         )}
+        {/* AI Sermon Listener */}
+        <SermonListener translation={translation} />
         {/* Search */}
         <div className="search-section">
           <input
