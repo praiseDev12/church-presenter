@@ -98,7 +98,7 @@ export default function SermonListener({ translation = 'KJV' }) {
   }
 
   const handleApprove = (ref) => {
-    window.electron.displayDetectedVerse(ref || pendingVerse)
+    window.electron.displayDetectedVerse({ ...(ref || pendingVerse), translation })
     setPendingVerse(null)
     clearTimeout(autoTimerRef.current)
   }

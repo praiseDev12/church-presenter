@@ -49,43 +49,46 @@ export default function App() {
     })
   }, [])
 
-  const performSearch = useCallback(
-    async (q, trans = translation) => {
-      if (!q || q.trim().length < 2) {
-        setResults([])
-        return
-      }
-      setIsSearching(true)
-      try {
-        const verses = await window.electron.searchVerses(q, trans)
-        setResults(verses)
-      } catch (err) {
-        console.error('Search error:', err)
-      } finally {
-        setIsSearching(false)
-      }
-    },
-    [translation]
-  )
+  // Replace your performSearch useCallback with this
+  const translationRef = useRef(translation)
 
-  // Handle translation change
-  const handleTranslationChange = (e) => {
-    const newTranslation = e.target.value
-    setTranslation(newTranslation)
-    if (query.length > 1) {
-      performSearch(query, newTranslation)
+  // Keep translationRef in sync
+  useEffect(() => {
+    translationRef.current = translation
+  }, [translation])
+
+  const performSearch = async (q, trans) => {
+    const activeTrans = trans || translationRef.current
+    if (!q || q.trim().length < 2) {
+      setResults([])
+      return
+    }
+    setIsSearching(true)
+    try {
+      const verses = await window.electron.searchVerses(q, activeTrans)
+      setResults(verses)
+    } catch (err) {
+      console.error('Search error:', err)
+    } finally {
+      setIsSearching(false)
     }
   }
 
   const handleQueryChange = (e) => {
     const val = e.target.value
     setQuery(val)
-
-    // Debounce — wait 300ms after user stops typing
     clearTimeout(debounceTimer.current)
     debounceTimer.current = setTimeout(() => {
-      performSearch(val)
+      performSearch(val) // will use translationRef.current — always fresh
     }, 300)
+  }
+
+  const handleTranslationChange = (e) => {
+    const newTranslation = e.target.value
+    setTranslation(newTranslation)
+    if (query.length > 1) {
+      performSearch(query, newTranslation) // pass explicitly
+    }
   }
 
   const sendToProjector = (verse) => {

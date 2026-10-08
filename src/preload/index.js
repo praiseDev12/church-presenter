@@ -1,4 +1,3 @@
-// src/preload/index.js
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electron', {

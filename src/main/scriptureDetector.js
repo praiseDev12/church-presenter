@@ -1,4 +1,3 @@
-// src/main/scriptureDetector.js
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
 let genAI = null
